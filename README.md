@@ -2,7 +2,7 @@
 
 Jenkins Exporter for Prometheus written in Python3.
 
-It collects and expose last build metrics (result, duration, timestamp) for every Repository & Branch from the provided Jenkins URL.
+Collects and exposes last build metrics (result, duration, timestamp) for every Repository & Branch from the provided Jenkins URL.
 
 ## Usage
 
@@ -47,17 +47,20 @@ It collects and expose last build metrics (result, duration, timestamp) for ever
 
 The `jenkins_exporter_k8s_manifest.yaml` will deploy everything needed to collect your Jenkins metrics:
 
-- Jenkins Exporter Deployment
-- Jenkins Exporter Service
-- Prometheus Deployment
-- Prometheus ConfigMap containing prometheus.yaml to scrape from the Jenkins Exporter Service
-- Prometheus Service
-- Prometheus PVC (Persistent Volume Claim) - for persistenting the data collected by Prometheus to survive Prometheus Pod restart/crash (alrenatively, omit this section and use emptyDir in the Prometheus Deployment)
-- Grafana Deployment
-- Grafana Service
-- Grafana Data Sources ConfigMap - to connect to Prometheus service as Data Source
-- Grafana Dashboards ConfigMap - to point grafana to the path were the Jenknis Jobs dashboard resides
-- Grafana Jenkins Job Dashboard ConfigMap - the actual Jenkins Jobs Dashboard
+* Jenkins Exporter
+  * Deployment
+  * Service
+* Prometheus
+  * Deployment
+  * Service
+  * ConfigMap  - containing prometheus.yaml to scrape from the Jenkins Exporter Service
+  * Persistent Volume Claim (PVC) - for persistenting the data collected by Prometheus (alternatively, you can omit this section and use emptyDir in the Prometheus Deployment)
+* Grafana
+  * Deployment
+  * Service
+  * ConfigMap Data Sources - to connect to Prometheus Service as Data Source
+  * ConfigMap Dashboards - to point grafana to the path were the Jenknis Jobs dashboard resides
+  * ConfigMap Jenkins Job Dashboard - the actual Jenkins Jobs Dashboard
 
 Replace the args section in the Jenkins Exporter Deployment with your Jenkins URL (e.g. `args: ["http://jenkins:8081/view/MYPRODUCT/"]`) and run the following:
 
