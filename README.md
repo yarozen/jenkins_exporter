@@ -45,7 +45,7 @@ Collects and exposes last build metrics (result, duration, timestamp) for every 
 
 ## Running in Kubernetes
 
-The `jenkins_exporter_k8s_manifest.yaml` will deploy everything needed to collect your Jenkins metrics:
+The `jenkins_exporter_k8s_manifest.yaml` will deploy everything needed to collect and display your Jenkins metrics:
 
 * Jenkins Exporter
   * Deployment
