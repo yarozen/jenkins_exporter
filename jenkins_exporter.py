@@ -26,9 +26,10 @@ class JenkinsCollector(object):
         'SUCCESS': 1
     }
 
-    def __init__(self, jenkins):
+    def __init__(self, jenkins, username, password):
         self.url = jenkins.rstrip('/') + \
             '/api/json?tree=jobs[name,lastBuild[number,building,result,duration,timestamp],jobs[name,lastBuild[number,building,result,duration,timestamp]]]'
+        self.auth = (username, password) if username and password else None
 
     def _init_metrics(self):
         self.metrics = {}
@@ -41,9 +42,11 @@ class JenkinsCollector(object):
         try:
             response = requests.get(
                 self.url,
-                verify=False
-            ).json()
-            for main_job in response["jobs"]:
+                verify=False,
+                auth=self.auth
+            )
+            response.raise_for_status()
+            for main_job in response.json()["jobs"]:
                 # WorkflowMultiBranchProject
                 if main_job["_class"] == "org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject":
                     for branch_job in main_job["jobs"]:
@@ -54,7 +57,12 @@ class JenkinsCollector(object):
 
             for m in self.metrics:
                 yield self.metrics[m]
-        except (requests.exceptions.ConnectionError, requests.exceptions.HTTPError, KeyError, json.decoder.JSONDecodeError) as e:
+        except (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.HTTPError,
+            KeyError,
+            json.decoder.JSONDecodeError
+        ) as e:
             logger.error('{}: {}'.format(type(e).__name__, e))
 
     def _get_job_metrics(self, job, repo_name):
@@ -75,16 +83,16 @@ class JenkinsCollector(object):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Jenkins Exporter'
+        description='Jenkins Exporter for Prometheus'
     )
     parser.add_argument(
         'jenkins',
-        help='Jenkins Server URL (e.g. http://jenkins:8080)',
+        help='Jenkins Server URL (e.g. http://jenkins:8080 or http://jenkins:8080/view/MYPRODUCT)',
         metavar="JENKINS_URL"
     )
     parser.add_argument(
         '-p', '--port',
-        help='Jenkins Exporter port. Default is 9789',
+        help='Jenkins Exporter listening port (Default is 9789)',
         type=int,
         default=9789,
         choices=range(1, 65535),
@@ -94,6 +102,16 @@ def parse_args():
         "-v", "--verbose",
         help="Increase output verbosity (DEBUG)",
         action="store_true"
+    )
+    parser.add_argument(
+        '-u', '--username',
+        help='Jenkins Server username',
+        default=None
+    )
+    parser.add_argument(
+        '-k', '--password',
+        help='Jenkins Server password',
+        default=None
     )
     return parser.parse_args()
 
@@ -105,7 +123,7 @@ def main():
         if args.verbose:
             logging.getLogger().setLevel(logging.DEBUG)
         logger.info(f"Jenkins Exporter started")
-        REGISTRY.register(JenkinsCollector(args.jenkins))
+        REGISTRY.register(JenkinsCollector(args.jenkins, args.username, args.password))
         # Clean up irrelevant metrics
         for c in [PROCESS_COLLECTOR,
                   PLATFORM_COLLECTOR,

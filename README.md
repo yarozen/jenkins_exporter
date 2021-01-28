@@ -6,7 +6,7 @@ Collects and exposes last build metrics (result, duration, timestamp) for every 
 
 ## Usage
 
-    usage: jenkins_exporter.py [-h] [-p {1..65535}] [-v] JENKINS_URL
+    usage: jenkins_exporter.py [-h] [-p {1..65535}] [-v] [-u USERNAME] [-k PASSWORD] JENKINS_URL
 
     Jenkins Exporter for Prometheus
 
@@ -18,6 +18,10 @@ Collects and exposes last build metrics (result, duration, timestamp) for every 
     -p {1..65535}, --port {1..65535}
                             Jenkins Exporter listening port (Default is 9789)
     -v, --verbose         Increase output verbosity (DEBUG)
+    -u USERNAME, --username USERNAME
+                            Jenkins Server username
+    -k PASSWORD, --password PASSWORD
+                            Jenkins Server password
 
 ## Produced Metrics
 
