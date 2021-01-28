@@ -1,7 +1,8 @@
 # Jenkins Exporter
 
 Jenkins Exporter for Prometheus written in Python3.
-It provides
+
+It collects and expose last build metrics (result, duration, timestamp) for every Repository & Branch from the provided Jenkins URL.
 
 ## Usage
 
@@ -24,7 +25,7 @@ It provides
 |---|---|---|
 |`jenkins_job_build_timestamp`|The time which the build was completed|epoch ms (milliseconds passed since 00:00:00 UTC on 1 January 1970)
 |`jenkins_job_build_duration`|The time it took the build to complete| ms (millieconds)
-|`jenkins_job_build_result`|Build result| <ul><li>FAILURE = 0</li><li>ABORTED = 0.5</li><li>UNSTABLE = 0.5</li><li>STABLE = 1</li><li>SUCCESS = 1</li></ul>
+|`jenkins_job_build_result`|Build result| <ul><li>FAILURE = 0</li><li>ABORTED = 0.5</li><li>UNSTABLE = 0.7</li><li>STABLE = 1</li><li>SUCCESS = 1</li></ul>
 
 ## Output Sample
 
@@ -51,7 +52,7 @@ The `jenkins_exporter_k8s_manifest.yaml` will deploy everything needed to collec
 - Prometheus Deployment
 - Prometheus ConfigMap containing prometheus.yaml to scrape from the Jenkins Exporter Service
 - Prometheus Service
-- Prometheus PVC (Persistent Volume Claim) - for persistenting the data collected by Prometheus to survive Prometheus Pod restart/crash (omit this section and use emptyDir in the Prometheus Deployment instead incase you dont have )
+- Prometheus PVC (Persistent Volume Claim) - for persistenting the data collected by Prometheus to survive Prometheus Pod restart/crash (alrenatively, omit this section and use emptyDir in the Prometheus Deployment)
 - Grafana Deployment
 - Grafana Service
 - Grafana Data Sources ConfigMap - to connect to Prometheus service as Data Source
@@ -62,6 +63,6 @@ Replace the args section in the Jenkins Exporter Deployment with your Jenkins UR
 
     kubectl apply -f jenkins_exporter_k8s_manifest.yaml [--namespace jenkins_exporter]
 
-## Grafaמa Dashboard
+## Grafana Dashboard
 
 ![Demo!](https://i.imgur.com/ABiB53r.png)
