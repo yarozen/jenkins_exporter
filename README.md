@@ -59,7 +59,7 @@ The `jenkins_exporter_k8s_manifest.yaml` will deploy everything needed to collec
 - Grafana Dashboards ConfigMap - to point grafana to the path were the Jenknis Jobs dashboard resides
 - Grafana Jenkins Job Dashboard ConfigMap - the actual Jenkins Jobs Dashboard
 
-Replace the args section in the Jenkins Exporter Deployment with your Jenkins URL (e.g. `args: [http://jenkins:8081/view/MYPRODUCT/]`) and run the following:
+Replace the args section in the Jenkins Exporter Deployment with your Jenkins URL (e.g. `args: ["http://jenkins:8081/view/MYPRODUCT/"]`) and run the following:
 
     kubectl apply -f jenkins_exporter_k8s_manifest.yaml [--namespace jenkins_exporter]
 
