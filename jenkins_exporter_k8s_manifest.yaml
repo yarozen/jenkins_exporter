@@ -17,7 +17,7 @@ spec:
       containers:
       - name: jenkins-exporter
         image: yarozen/jenkins_exporter
-        args: ["http://10.229.11.159:8081/view/ADCC/"]
+        args: ["http://jenkins:8081/view/MYPRODUCT/"]
         ports:
         - containerPort: 9789
 ---
