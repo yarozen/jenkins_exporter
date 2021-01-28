@@ -33,13 +33,13 @@ Collects and exposes last build metrics (result, duration, timestamp) for every 
 
 ## Output Sample
 
-    # HELP jenkins_job_build_timestamp 
+    # HELP jenkins_job_build_timestamp Jenkins build completion time in epoch milliseconds 
     # TYPE jenkins_job_build_timestamp gauge
     jenkins_job_build_timestamp{branch="dev",build="1",repo="my_repo"} 1.611744014484e+012
-    # HELP jenkins_job_build_duration 
+    # HELP jenkins_job_build_duration Jenkins build duration in milliseconds 
     # TYPE jenkins_job_build_duration gauge
     jenkins_job_build_duration{branch="dev",build="1",repo="my_repo"} 507379.0
-    # HELP jenkins_job_build_result 
+    # HELP jenkins_job_build_result Jenkins build result (1=Succces/Stable, 0.7=Unstable, 0.5=Aborted, 0=Failure)
     # TYPE jenkins_job_build_result gauge
     jenkins_job_build_result{branch="dev",build="1",repo="my_repo"} 1.0
 

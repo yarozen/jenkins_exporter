@@ -17,7 +17,11 @@ logger = logging.getLogger('Jenkins Exporter')
 
 
 class JenkinsCollector(object):
-    objs = ['timestamp', 'duration', 'result']
+    objs = {
+        'timestamp': 'Jenkins build completion time in epoch milliseconds',
+        'duration': 'Jenkins build duration in milliseconds',
+        'result': 'Jenkins build result (1=Succces/Stable, 0.7=Unstable, 0.5=Aborted, 0=Failure)'
+    }
     result_map = {
         'FAILURE': 0,
         'ABORTED': 0.5,
@@ -33,8 +37,8 @@ class JenkinsCollector(object):
 
     def _init_metrics(self):
         self.metrics = {}
-        for obj in self.objs:
-            self.metrics[obj] = GaugeMetricFamily(f'jenkins_job_build_{obj}', '', labels=['repo', 'branch', 'build'])
+        for key, value in self.objs.items():
+            self.metrics[key] = GaugeMetricFamily(f'jenkins_job_build_{key}', value, labels=['repo', 'branch', 'build'])
 
     def collect(self):
         # initialize metrics
