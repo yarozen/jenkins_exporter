@@ -1,0 +1,667 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins-exporter
+  labels:
+    app: jenkins-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jenkins-exporter
+  template:
+    metadata:
+      labels:
+        app: jenkins-exporter
+    spec:
+      containers:
+      - name: jenkins-exporter
+        image: yarozen/jenkins_exporter
+        args: ["http://10.229.11.159:8081/view/ADCC/"]
+        ports:
+        - containerPort: 9789
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: jenkins-exporter
+  name: jenkins-exporter
+spec:
+  ports:
+  - port: 9789
+    protocol: TCP
+    targetPort: 9789
+  selector:
+    app: jenkins-exporter
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-deployment
+  labels:
+    app: prometheus-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus-server
+  template:
+    metadata:
+      labels:
+        app: prometheus-server
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus/"
+            - "--storage.tsdb.retention.time=1y"
+            - "--storage.tsdb.retention.size=9GB"
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: prometheus-config-volume
+              mountPath: /etc/prometheus/
+            - name: prometheus-storage-volume
+              mountPath: /prometheus/
+      volumes:
+        - name: prometheus-config-volume
+          configMap:
+            defaultMode: 420
+            name: prometheus-server-conf
+        - name: prometheus-storage-volume
+          #emptyDir: {}
+          persistentVolumeClaim:
+            claimName: prometheus-pvc
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-server-conf
+  labels:
+    name: prometheus-server-conf
+data:
+  prometheus.yml: |-
+    scrape_configs:
+      - job_name: 'jenkins'
+        static_configs:
+        - targets: ['jenkins-exporter:9789']
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: prometheus-server
+  name: prometheus-server
+spec:
+  ports:
+  - port: 9090
+    protocol: TCP
+    targetPort: 9090
+  selector:
+    app: prometheus-server
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: prometheus
+          image: grafana/grafana
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+          - mountPath: /etc/grafana/provisioning/datasources
+            name: grafana-datasources
+            readOnly: false
+          - mountPath: /etc/grafana/provisioning/dashboards
+            name: grafana-dashboards
+            readOnly: false
+          - mountPath: /var/lib/grafana/dashboards
+            name: grafana-source-dashboards
+            readOnly: false
+      volumes:
+      - name: grafana-datasources
+        configMap:
+          name: grafana-datasources
+      - name: grafana-dashboards
+        configMap:
+          name: grafana-dashboards
+      - name: grafana-source-dashboards
+        configMap:
+          name: grafana-source-dashboards
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: grafana
+  name: grafana
+spec:
+  ports:
+  - port: 3000
+    protocol: TCP
+    targetPort: 3000
+  selector:
+    app: grafana
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  labels:
+    name: grafana-datasources
+data:
+  datasources.yaml: |-
+    apiVersion: 1
+    datasources:
+      - id: 1
+        orgId: 1
+        name: Prometheus
+        type: prometheus
+        typeLogoUrl: ''
+        access: proxy
+        url: http://prometheus-server:9090
+        password: ''
+        user: ''
+        database: ''
+        basicAuth: false
+        basicAuthUser: ''
+        basicAuthPassword: ''
+        withCredentials: false
+        isDefault: true
+        jsonData:
+          timeInterval: 60s
+        secureJsonFields: {}
+        version: 8
+        readOnly: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  labels:
+    name: grafana-dashboards
+data:
+  dashboards.yaml: |-
+    apiVersion: 1
+    providers:
+      - name: '0'
+        orgId: 1
+        folder: 'Default'
+        type: file
+        options:
+          path: /var/lib/grafana/dashboards
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-source-dashboards
+  labels:
+    name: grafana-source-dashboards
+data:
+  jenkins-dashboard.json: |-
+    {
+      "__inputs": [
+        {
+          "name": "Prometheus",
+          "label": "Prometheus",
+          "description": "",
+          "type": "datasource",
+          "pluginId": "prometheus",
+          "pluginName": "Prometheus"
+        }
+      ],
+      "__requires": [
+        {
+          "type": "grafana",
+          "id": "grafana",
+          "name": "Grafana",
+          "version": "7.3.7"
+        },
+        {
+          "type": "datasource",
+          "id": "prometheus",
+          "name": "Prometheus",
+          "version": "1.0.0"
+        },
+        {
+          "type": "panel",
+          "id": "table",
+          "name": "Table",
+          "version": ""
+        }
+      ],
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": "-- Grafana --",
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "gnetId": null,
+      "graphTooltip": 0,
+      "id": null,
+      "iteration": 1611497529027,
+      "links": [],
+      "panels": [
+        {
+          "datasource": "Prometheus",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": null,
+                "displayMode": "auto",
+                "filterable": true
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Timestamp (last)"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "dateTimeFromNow"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Duration (last)"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "dtdurationms"
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 3600000
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "continuous-GrYlRd"
+                    }
+                  },
+                  {
+                    "id": "custom.displayMode",
+                    "value": "basic"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 637
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Result (last)"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "from": "",
+                        "id": 1,
+                        "text": "FAILURE",
+                        "to": "",
+                        "type": 1,
+                        "value": "0"
+                      },
+                      {
+                        "from": "",
+                        "id": 2,
+                        "text": "SUCCESS",
+                        "to": "",
+                        "type": 1,
+                        "value": "1"
+                      },
+                      {
+                        "from": "",
+                        "id": 3,
+                        "text": "ABORTED",
+                        "to": "",
+                        "type": 1,
+                        "value": "0.5"
+                      },
+                      {
+                        "from": "",
+                        "id": 4,
+                        "text": "UNSTABLE",
+                        "to": "",
+                        "type": 1,
+                        "value": "0.7"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 1
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": null
+                        },
+                        {
+                          "color": "red",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 0.5
+                        },
+                        {
+                          "color": "orange",
+                          "value": 0.7
+                        },
+                        {
+                          "color": "green",
+                          "value": 1
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.displayMode",
+                    "value": "color-text"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 131
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Build"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 70
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Branch"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 340
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Repository"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 461
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 22,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "id": 2,
+          "options": {
+            "frameIndex": 2,
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Timestamp (last)"
+              }
+            ]
+          },
+          "pluginVersion": "7.3.7",
+          "targets": [
+            {
+              "expr": "jenkins_job_build_result{repo=~\"$repo\", branch=~\"$branch\"} + 0",
+              "format": "table",
+              "instant": false,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "expr": "jenkins_job_build_duration{repo=~\"$repo\", branch=~\"$branch\"} + 0",
+              "format": "table",
+              "instant": false,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            },
+            {
+              "expr": "jenkins_job_build_timestamp{repo=~\"$repo\", branch=~\"$branch\"} + 0",
+              "format": "table",
+              "instant": false,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "C"
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Jobs",
+          "transformations": [
+            {
+              "id": "labelsToFields",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "instance": true,
+                  "job": true
+                },
+                "indexByName": {
+                  "Time": 0,
+                  "Value #A": 6,
+                  "Value #B": 7,
+                  "Value #C": 8,
+                  "branch": 2,
+                  "build": 3,
+                  "instance": 4,
+                  "job": 5,
+                  "repo": 1
+                },
+                "renameByName": {
+                  "Value #A": "Result",
+                  "Value #B": "Duration",
+                  "Value #C": "Timestamp",
+                  "branch": "Branch",
+                  "build": "Build",
+                  "instance": "",
+                  "repo": "Repository"
+                }
+              }
+            },
+            {
+              "id": "groupBy",
+              "options": {
+                "fields": {
+                  "Branch": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "Build": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "Duration": {
+                    "aggregations": [
+                      "last"
+                    ],
+                    "operation": "aggregate"
+                  },
+                  "Repository": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "Result": {
+                    "aggregations": [
+                      "last"
+                    ],
+                    "operation": "aggregate"
+                  },
+                  "Timestamp": {
+                    "aggregations": [
+                      "last"
+                    ],
+                    "operation": "aggregate"
+                  }
+                }
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ],
+      "refresh": "5m",
+      "schemaVersion": 26,
+      "style": "dark",
+      "tags": [],
+      "templating": {
+        "list": [
+          {
+            "allValue": null,
+            "current": {},
+            "datasource": "Prometheus",
+            "definition": "label_values(jenkins_job_build_result, repo)",
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Repository",
+            "multi": false,
+            "name": "repo",
+            "options": [],
+            "query": "label_values(jenkins_job_build_result, repo)",
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "tagValuesQuery": "",
+            "tags": [],
+            "tagsQuery": "",
+            "type": "query",
+            "useTags": false
+          },
+          {
+            "allValue": null,
+            "current": {},
+            "datasource": "Prometheus",
+            "definition": "label_values(jenkins_job_build_result{repo=~\"$repo\"}, branch)",
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Branch",
+            "multi": false,
+            "name": "branch",
+            "options": [],
+            "query": "label_values(jenkins_job_build_result{repo=~\"$repo\"}, branch)",
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "tagValuesQuery": "",
+            "tags": [],
+            "tagsQuery": "",
+            "type": "query",
+            "useTags": false
+          }
+        ]
+      },
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "Jenkins Jobs",
+      "uid": "iY6lZCBMz",
+      "version": 7
+    }
