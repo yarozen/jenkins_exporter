@@ -43,9 +43,7 @@ It provides
     docker run -p 9789:9789 yarozen/jenkins_exporter -p 9789 http://jenkins:8081/view/MYPRODUCT
 
 ## Running in Kubernetes
-Replace the args section in the Jenkins Exporter Deployment with your Jenkins URL (e.g. `args: [http://jenkins:8081/view/MYPRODUCT/]`) and run the following:
 
-    kubectl apply -f jenkins_exporter_k8s_manifest.yaml [--namespace jenkins_exporter]
 The `jenkins_exporter_k8s_manifest.yaml` will deploy everything needed to collect your Jenkins metrics:
 
 - Jenkins Exporter Deployment
@@ -60,7 +58,10 @@ The `jenkins_exporter_k8s_manifest.yaml` will deploy everything needed to collec
 - Grafana Dashboards ConfigMap - to point grafana to the path were the Jenknis Jobs dashboard resides
 - Grafana Jenkins Job Dashboard ConfigMap - the actual Jenkins Jobs Dashboard
 
-## Grafama Dashboard
+Replace the args section in the Jenkins Exporter Deployment with your Jenkins URL (e.g. `args: [http://jenkins:8081/view/MYPRODUCT/]`) and run the following:
 
-Example of the Grafana Dashboard
-[](./grafana_dashboard.png)
+    kubectl apply -f jenkins_exporter_k8s_manifest.yaml [--namespace jenkins_exporter]
+
+## Grafaמa Dashboard
+
+![Demo!](https://i.imgur.com/ABiB53r.png)
