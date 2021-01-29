@@ -45,7 +45,7 @@ Collects and exposes last build metrics (result, duration, timestamp) for every 
 
 ## Running in Docker
 
-    docker run -p 9789:9789 yarozen/jenkins_exporter -p 9789 http://jenkins:8081/view/MYPRODUCT
+    docker run -d --name jenkins_exporter -p 9789:9789 yarozen/jenkins_exporter -p 9789 http://jenkins:8081/view/MYPRODUCT
 
 ## Running in Kubernetes
 
